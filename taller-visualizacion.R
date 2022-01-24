@@ -2,8 +2,8 @@
 ###########################################################################
 ##############    Talleres Aprendiendo Metodología x Vale    ##############
 ############## Taller de Visualización de Datos Panel con R  ##############           
-##############   Cristóbal Ortiz, Licenciado en Sociología   ##############
-##############              Update: 21/01/2022               ##############
+##############   Cristóbal Ortiz, Asistente de Datos OLES    ##############
+##############              Update: 24/01/2022               ##############
 ###########################################################################
 ###########################################################################
 
@@ -42,6 +42,10 @@ elsoc_long[elsoc_long == -999 | elsoc_long == -888] <- NA #recodificar No sabe y
 elsoc_long <- elsoc_long %>% 
   mutate(ola = factor(ola, labels = c("2016", "2017", "2018", "2019")))
 
+save(elsoc_long, file = "datos/elsoc-long.RData")
+
+load("datos/elsoc-long.RData") #alternativamente cargar esta base que ya contiene las transformaciones antes descritas
+
 # Estructura de ggplot2 ---------------------------------------------------
 
 ggplot(data = DATOS, aes(MAPEOS)) +
@@ -66,7 +70,7 @@ elsoc_long %>%
   geom_col(position = 'dodge2') + 
   geom_text(position = position_dodge(width  = .9),
             size = 2.5,
-            vjust = -0.6) +
+            vjust = -0.5) +
   labs(title = get_label(elsoc_long$c10_01),
        x = "",
        y = "") +
@@ -177,7 +181,7 @@ elsoc_long %>%
   drop_na() %>% 
   group_by(ola, name) %>% 
   mutate(freq = (n/sum(n))) %>% 
-    filter(value %in% c("Nada o poca")) %>% 
+  filter(value %in% c("Nada o poca")) %>% 
   ggplot(aes(x = ola, y = freq, color = name, group = name,
              label = as.character(scales::percent(freq, accuracy = .1)))) +
   geom_line(size = 1) +
@@ -232,10 +236,43 @@ ggplot(datos, aes(x = ola,
   theme(legend.position = 'top',
         legend.title = element_blank())
 
-# Bonus: gráficos con diseño muestral complejo ----------------------------
 
+# Gráfico alluvial con facet --------------------------------------------
 
+datos_2 <- elsoc_long %>% 
+  ungroup() %>% 
+  count(idencuesta, ola, c12_01, m0_sexo) %>% 
+  drop_na() %>% 
+  group_by(ola, m0_sexo) %>% 
+  mutate(freq = (n/sum(n))) %>% 
+  as_label(c12_01, m0_sexo)
 
+etiquetas_2 <- elsoc_long %>% 
+  ungroup() %>% 
+  count(ola, c12_01, m0_sexo) %>% 
+  drop_na() %>% 
+  group_by(ola) %>% 
+  mutate(freq = (n/sum(n)), 
+         idencuesta = 1) %>% 
+  as_label(c12_01, m0_sexo)
 
-
+ggplot(datos_2, aes(x = ola, 
+                  y = freq,
+                  fill = c12_01,
+                  stratum = c12_01,
+                  alluvium = idencuesta)) +
+  ggalluvial::geom_flow(alpha = .7) + 
+  ggalluvial::geom_stratum(linetype = 0) +
+  geom_text(data = etiquetas_2,
+            aes(label = scales::percent(freq, accuracy = .1)),
+            position = position_stack(vjust = .5),
+            size = 3,
+            vjust = -10) +
+  labs(title = get_label(elsoc_long$c12_01),
+       x = NULL,
+       y = NULL) +
+  scale_y_continuous(labels = scales::percent) +
+  theme(legend.position = 'top',
+        legend.title = element_blank()) +
+  facet_wrap(.~m0_sexo) 
 
